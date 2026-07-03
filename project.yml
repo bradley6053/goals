@@ -40,6 +40,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.bradniemeier.ember
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_CFBundleDisplayName: Ember
+        TARGETED_DEVICE_FAMILY: "1"
     dependencies:
       - target: EmberWidget
         embed: true
@@ -64,6 +65,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bradniemeier.ember.widget
         SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1"
   EmberTests:
     type: bundle.unit-test
     platform: iOS
