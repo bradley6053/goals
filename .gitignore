@@ -1,0 +1,24 @@
+# Xcode / build
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# XcodeGen generates the project from project.yml — treat it as a build artifact
+Ember.xcodeproj/
+
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods / Carthage (not used, but future-proof)
+Pods/
+Carthage/Build/

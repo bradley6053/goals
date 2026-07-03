@@ -1,0 +1,87 @@
+name: Ember
+options:
+  bundleIdPrefix: com.bradniemeier
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: NF6A6F9SXY
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  Ember:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Shared
+    entitlements:
+      path: App/Ember.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.bradniemeier.ember
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Ember
+        UILaunchScreen: {}
+        UIUserInterfaceStyle: Dark
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        CFBundleURLTypes:
+          - CFBundleURLName: com.bradniemeier.ember
+            CFBundleURLSchemes:
+              - ember
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bradniemeier.ember
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleDisplayName: Ember
+    dependencies:
+      - target: EmberWidget
+        embed: true
+  EmberWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widget
+      - Shared
+    entitlements:
+      path: Widget/EmberWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.bradniemeier.ember
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Ember Widget
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bradniemeier.ember.widget
+        SKIP_INSTALL: YES
+  EmberTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bradniemeier.ember.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Ember:
+    build:
+      targets:
+        Ember: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - EmberTests
