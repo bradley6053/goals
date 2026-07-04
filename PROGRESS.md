@@ -1,10 +1,10 @@
 # Ember — Progress
 
-A native SwiftUI iOS goals-tracking app with a home-screen widget. Personal project.
+A native SwiftUI iOS goals-tracking app with a home-screen widget, plus a Sweetens Cove–themed golf scorecard tab. Personal project.
 
-## Snapshot (2026-07-02)
-- **Status:** ✅ Build succeeds (app + widget), ✅ all 11 unit tests pass.
-- **Platform:** iOS 18+, SwiftUI, dark mode only, portrait only.
+## Snapshot (2026-07-04)
+- **Status:** ✅ Build succeeds (app + widget), ✅ all 32 unit tests pass (GoalMath 11, GolfMath 16, GolfAPI 3, plus formatting).
+- **Platform:** iOS 18+, SwiftUI, dark mode forced app-wide (golf tab paints its own cream light world), portrait only.
 - **Bundle IDs:** app `com.bradniemeier.ember`, widget `com.bradniemeier.ember.widget`, tests `com.bradniemeier.ember.tests`.
 - **App group (shared storage):** `group.com.bradniemeier.ember`.
 - **Team:** NF6A6F9SXY. Code sign style: Automatic.
@@ -19,11 +19,12 @@ xcodegen generate
 
 | Area | Files |
 |------|-------|
-| App shell | `App/EmberApp.swift`, `App/Support/DemoSeed.swift`, `App/Support/Haptics.swift` |
-| Views | `App/Views/` — `GoalListView`, `GoalDetailView`, `GoalEditorView`, `LogProgressSheet`, `CelebrationView`, `Components` |
-| Shared (app + widget) | `Shared/` — `Models`, `GoalMath`, `Theme`, `AppGroup`, `ImageStore`, `WidgetSnapshot` |
+| App shell | `App/EmberApp.swift`, `App/Views/RootTabView.swift`, `App/Support/` — `DemoSeed`, `GolfDemoSeed`, `Haptics` |
+| Goal views | `App/Views/` — `GoalListView`, `GoalDetailView`, `GoalEditorView`, `LogProgressSheet`, `CelebrationView`, `Components` |
+| Golf views | `App/Views/Golf/` — `GolfHomeView`, `CourseSearchSheet`, `ManualCourseEntryView`, `NewRoundSetupView`, `RoundEntryView`, `RoundSummaryView`, `ScorecardShareCard`, `StatsView`, `RecordsView`, `PassportView`, `GolfCelebrationView`, `ConfettiView`, `GolfComponents` |
+| Shared (all targets) | `Shared/` — `Models`, `GoalMath`, `Theme`, `AppGroup`, `ImageStore`, `WidgetSnapshot`, `GolfModels`, `GolfMath`, `GolfTheme`, `GolfAPI` |
 | Widget | `Widget/EmberWidget.swift` |
-| Tests | `Tests/GoalMathTests.swift` (11 tests) |
+| Tests | `Tests/` — `GoalMathTests` (11), `GolfMathTests` (16), `GolfAPITests` (3) |
 
 ## Build & test
 ```
@@ -40,7 +41,17 @@ xcodebuild -project Ember.xcodeproj -scheme Ember -sdk iphonesimulator \
 - Goal model with increasing/decreasing direction, milestones, progress fractions (`GoalMath`, fully unit-tested).
 - Goal list, detail, create/edit editor, log-progress sheet, milestone celebration view.
 - Home-screen widget reading a shared snapshot via the app group (`WidgetSnapshot` + `ImageStore`).
-- Demo data seeding for previews/first run.
+- Demo data seeding for previews/first run (`-seedDemo`, `-seedGolfDemo` launch args).
+- **Golf tab** (Sweetens Cove theme — cream/pine/sky, serif club headers, "Golf is supposed to be fun"):
+  - Bottom TabView: dark Goals tab + light Golf tab, each with its own chrome.
+  - Course search via **OpenGolfAPI** (free, keyless, `api.opengolfapi.org`) with scorecard pull-in (tees, ratings/slope, per-hole par/handicap/yardage); courses cached in SwiftData so replays work offline; manual course entry fallback.
+  - Hole-by-hole round entry: swipe pager, strokes/putts steppers, fairway (hidden on par 3s) + GIR toggles, penalties; live OUT/IN/TOT/vs-par footer; resume in-progress rounds; 9 or 18 holes (front 9 supported on 18-hole courses).
+  - Round summary: classic scorecard grid (circled birdies, squared bogeys), stat chips, score distribution, shareable scorecard image (`ImageRenderer` + `ShareLink`).
+  - **Fun feature 1 — Personal Bests:** course-record trophy wall (9/18 split), longest birdie streak, full-screen PB celebration with confetti.
+  - **Fun feature 2 — Course Passport:** stamp per course played, 5/10/25 milestones, MapKit pin map (no location permission; `CLGeocoder` fallback for missing coordinates).
+  - **Fun feature 3 — Live Round Vibes:** confetti + haptics on birdie/eagle commit, hot/cold streak banners.
+  - Deep link `ember://golf` and `-golfTab` launch arg jump to the golf tab; `GOLF_OPEN` env var (simulator) jumps to a specific screen for screenshots.
+- Golf data: 5 new SwiftData models (`GolfCourse/GolfTee/GolfHole/GolfRound/GolfHoleScore`) added additively to the existing app-group store — goals data verified intact alongside.
 
 ## Open threads / possible next steps
 _(No specific in-flight task was recorded when the prior session terminated — the codebase was left in a green state.)_
@@ -51,4 +62,5 @@ _(No specific in-flight task was recorded when the prior session terminated — 
 - [ ] Broader test coverage beyond `GoalMath`.
 
 ## Changelog
+- **2026-07-04** — Added the golf scorecard tab: TabView root, Sweetens Cove `GolfTheme`, OpenGolfAPI course search + import, hole-by-hole entry with stats (putts/FIR/GIR/penalties), round summary + share card, records, passport with map, celebrations/confetti. 5 new SwiftData models (additive schema change). EmberTests now depends on the Ember target (fixed clean-build test failures). 32 tests green; verified in simulator with screenshots.
 - **2026-07-02** — Initialized git repo + this PROGRESS.md. Reconstructed state after a prior session terminated without a save. Confirmed build + tests green.

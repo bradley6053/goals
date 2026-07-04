@@ -8,11 +8,12 @@ struct EmberApp: App {
     init() {
         container = EmberStore.container()
         DemoSeed.runIfRequested(container: container)
+        GolfDemoSeed.runIfRequested(container: container)
     }
 
     var body: some Scene {
         WindowGroup {
-            GoalListView()
+            RootTabView()
                 .preferredColorScheme(.dark)
         }
         .modelContainer(container)

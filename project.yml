@@ -72,6 +72,8 @@ targets:
     sources:
       - Tests
       - Shared
+    dependencies:
+      - target: Ember
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bradniemeier.ember.tests

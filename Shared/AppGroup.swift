@@ -24,7 +24,9 @@ enum AppGroup {
 
 enum EmberStore {
     static func container() -> ModelContainer {
-        let schema = Schema([Goal.self, Milestone.self, ProgressEntry.self])
+        let schema = Schema([Goal.self, Milestone.self, ProgressEntry.self,
+                             GolfCourse.self, GolfTee.self, GolfHole.self,
+                             GolfRound.self, GolfHoleScore.self])
         do {
             let config = ModelConfiguration(
                 "Ember",
