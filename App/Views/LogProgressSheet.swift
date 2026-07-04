@@ -103,53 +103,14 @@ struct LogProgressSheet: View {
     private func save() {
         guard let value = parsedValue else { return }
 
-        let before = Set(goal.milestones.filter { goal.isReached($0) }.map(\.uuid))
-        let wasComplete = goal.isComplete
-
-        let entry = ProgressEntry(value: value, note: note.isEmpty ? nil : note)
-        entry.goal = goal
-        context.insert(entry)
-
-        // Stamp newly crossed milestones.
-        var newlyUnlocked: [Milestone] = []
-        for milestone in goal.orderedMilestones where !before.contains(milestone.uuid) {
-            if goal.isReached(milestone) {
-                milestone.unlockedAt = Date()
-                newlyUnlocked.append(milestone)
-            }
-        }
-        let justCompleted = !wasComplete && goal.isComplete
-        if justCompleted {
-            goal.completedAt = Date()
-            goal.celebratedCompletion = true
-        }
-
-        try? context.save()
-        if let allGoals = try? context.fetch(FetchDescriptor<Goal>()) {
-            WidgetSnapshotStore.write(from: allGoals)
-        }
+        let payload = ProgressLogger.log(
+            goal: goal, value: value,
+            note: note.isEmpty ? nil : note, context: context)
 
         dismiss()
 
-        // Completion beats milestone if both crossed in one log.
-        if justCompleted {
-            onCelebration(CelebrationPayload(
-                milestoneLabel: GoalFormat.milestoneLabel(
-                    value: goal.targetValue, start: goal.startValue,
-                    target: goal.targetValue, unit: goal.unit),
-                rewardTitle: goal.rewardTitle,
-                rewardImageFile: goal.rewardImageFile,
-                accentName: goal.accentName,
-                isGoalComplete: true))
-        } else if let milestone = newlyUnlocked.last {
-            onCelebration(CelebrationPayload(
-                milestoneLabel: GoalFormat.milestoneLabel(
-                    value: milestone.value, start: goal.startValue,
-                    target: goal.targetValue, unit: goal.unit),
-                rewardTitle: milestone.rewardTitle,
-                rewardImageFile: milestone.rewardImageFile,
-                accentName: goal.accentName,
-                isGoalComplete: false))
+        if let payload {
+            onCelebration(payload)
         } else {
             Haptics.success()
         }

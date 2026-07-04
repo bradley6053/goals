@@ -20,6 +20,12 @@ struct GoalSnapshot: Codable, Identifiable {
     var nextRewardImageFile: String?
     var isComplete: Bool
     var updatedAt: Date
+    // Habit-goal extras. Optional so snapshots written by older builds
+    // still decode (missing keys → nil → numeric rendering).
+    var kindName: String? = nil
+    var streakCount: Int? = nil
+    var bestStreak: Int? = nil
+    var lastCheckInDay: Date? = nil
 }
 
 enum WidgetSnapshotStore {
@@ -31,9 +37,25 @@ enum WidgetSnapshotStore {
 
         let snapshots = all.map { goal -> GoalSnapshot in
             let next = goal.nextMilestone
+
+            let headline: String
+            switch goal.kind {
+            case .numeric:
+                headline = GoalFormat.signedDelta(
+                    GoalMath.deltaFromStart(start: goal.startValue, current: goal.currentValue),
+                    unit: goal.unit)
+            case .count:
+                headline = GoalFormat.countHeadline(
+                    current: goal.currentValue, target: goal.targetValue)
+            case .streak:
+                headline = GoalFormat.streakHeadline(goal.currentStreak)
+            }
+
             let subline: String
             if goal.isComplete {
                 subline = "Goal complete — \(goal.rewardTitle)"
+            } else if goal.kind == .streak && !goal.hasCheckedInToday {
+                subline = "Check in to keep the flame"
             } else if let next {
                 let left = GoalMath.remaining(
                     to: next.value, current: goal.currentValue,
@@ -45,20 +67,26 @@ enum WidgetSnapshotStore {
                     start: goal.startValue, target: goal.targetValue)
                 subline = "\(GoalFormat.value(left, unit: goal.unit)) to go"
             }
+
+            let isStreak = goal.kind == .streak
             return GoalSnapshot(
                 id: goal.uuid,
                 title: goal.title,
                 accentName: goal.accentName,
                 unit: goal.unit,
                 fraction: goal.fraction,
-                headline: GoalFormat.signedDelta(
-                    GoalMath.deltaFromStart(start: goal.startValue, current: goal.currentValue),
-                    unit: goal.unit),
+                headline: headline,
                 subline: subline,
                 nextRewardTitle: next?.rewardTitle ?? goal.rewardTitle,
                 nextRewardImageFile: next?.rewardImageFile ?? goal.rewardImageFile,
                 isComplete: goal.isComplete,
-                updatedAt: Date()
+                updatedAt: Date(),
+                kindName: goal.goalTypeName,
+                streakCount: isStreak ? goal.currentStreak : nil,
+                bestStreak: isStreak ? goal.bestStreak : nil,
+                lastCheckInDay: isStreak
+                    ? goal.lastLoggedAt.map { Calendar.current.startOfDay(for: $0) }
+                    : nil
             )
         }
 

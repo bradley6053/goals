@@ -23,12 +23,23 @@ struct EmberProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<EmberEntry>) -> Void) {
-        let entry = EmberEntry(date: Date(), snapshot: WidgetSnapshotStore.read().first)
-        // State only changes when the app writes a new snapshot (which reloads
-        // timelines), so a slow refresh policy is fine.
-        let timeline = Timeline(entries: [entry],
-                                policy: .after(Date().addingTimeInterval(3600)))
-        completion(timeline)
+        let snapshot = WidgetSnapshotStore.read().first
+        var entries = [EmberEntry(date: Date(), snapshot: snapshot)]
+
+        // Streaks change meaning at midnight (a lapsed streak should show 0
+        // and the check-in nudge) even if the app never opens, so schedule a
+        // second entry at the day boundary. Other kinds only change when the
+        // app writes a new snapshot, which reloads timelines anyway.
+        if snapshot?.kindName == GoalKind.streak.rawValue,
+           let midnight = Calendar.current.date(
+               byAdding: .day, value: 1,
+               to: Calendar.current.startOfDay(for: Date())) {
+            entries.append(EmberEntry(date: midnight, snapshot: snapshot))
+            completion(Timeline(entries: entries, policy: .after(midnight)))
+            return
+        }
+        completion(Timeline(entries: entries,
+                            policy: .after(Date().addingTimeInterval(3600))))
     }
 }
 
@@ -58,11 +69,38 @@ struct EmberWidgetView: View {
 
     var body: some View {
         if let snapshot = entry.snapshot {
-            content(snapshot)
+            content(displaySnapshot(snapshot))
                 .widgetURL(URL(string: "ember://goal/\(snapshot.id.uuidString)"))
         } else {
             emptyContent
         }
+    }
+
+    /// Re-derives streak text for this entry's date so the midnight timeline
+    /// entry shows a lapsed streak (and the check-in nudge) without the app
+    /// having written a fresh snapshot. Non-streak snapshots pass through.
+    private func displaySnapshot(_ snapshot: GoalSnapshot) -> GoalSnapshot {
+        guard snapshot.kindName == GoalKind.streak.rawValue, !snapshot.isComplete
+        else { return snapshot }
+
+        let calendar = Calendar.current
+        let displayed = StreakMath.displayedStreak(
+            storedStreak: snapshot.streakCount ?? 0,
+            lastCheckInDay: snapshot.lastCheckInDay,
+            asOf: entry.date, calendar: calendar)
+
+        var adjusted = snapshot
+        adjusted.headline = GoalFormat.streakHeadline(displayed)
+        let checkedInToday = snapshot.lastCheckInDay.map {
+            calendar.isDate($0, inSameDayAs: entry.date)
+        } ?? false
+        if !checkedInToday {
+            adjusted.subline = "Check in to keep the flame"
+        }
+        if displayed == 0 {
+            adjusted.fraction = 0
+        }
+        return adjusted
     }
 
     @ViewBuilder

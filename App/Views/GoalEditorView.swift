@@ -11,6 +11,7 @@ struct GoalEditorView: View {
     /// Nil when creating a new goal.
     var goal: Goal?
 
+    @State private var kind: GoalKind = .numeric
     @State private var title = ""
     @State private var unit = "lbs"
     @State private var startText = ""
@@ -44,15 +45,42 @@ struct GoalEditorView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 28) {
                         section("The goal") {
-                            styledField("Lose 20 lbs", text: $title)
-                            HStack(spacing: 12) {
-                                labeledNumberField("Start", placeholder: "220", text: $startText)
-                                labeledNumberField("Target", placeholder: "200", text: $targetText)
-                                VStack(alignment: .leading, spacing: 6) {
-                                    OverlineText("Unit")
-                                    styledField("lbs", text: $unit)
-                                        .frame(width: 80)
+                            if goal == nil {
+                                Picker("Type", selection: $kind) {
+                                    Text("Number").tag(GoalKind.numeric)
+                                    Text("Count").tag(GoalKind.count)
+                                    Text("Streak").tag(GoalKind.streak)
                                 }
+                                .pickerStyle(.segmented)
+                                .onChange(of: kind) { _, newKind in
+                                    applyKindDefaults(newKind)
+                                }
+                            }
+                            styledField(titlePlaceholder, text: $title)
+                            switch kind {
+                            case .numeric:
+                                HStack(spacing: 12) {
+                                    labeledNumberField("Start", placeholder: "220", text: $startText)
+                                    labeledNumberField("Target", placeholder: "200", text: $targetText)
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        OverlineText("Unit")
+                                        styledField("lbs", text: $unit)
+                                            .frame(width: 80)
+                                    }
+                                }
+                            case .count:
+                                HStack(spacing: 12) {
+                                    labeledNumberField("Target", placeholder: "100",
+                                                       text: $targetText, wholeNumbers: true)
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        OverlineText("Unit")
+                                        styledField("times", text: $unit)
+                                            .frame(width: 100)
+                                    }
+                                }
+                            case .streak:
+                                labeledNumberField("Days in a row", placeholder: "30",
+                                                   text: $targetText, wholeNumbers: true)
                             }
                             Toggle(isOn: $hasDeadline) {
                                 Text("Deadline")
@@ -172,11 +200,35 @@ struct GoalEditorView: View {
     }
 
     private func labeledNumberField(_ label: String, placeholder: String,
-                                    text: Binding<String>) -> some View {
+                                    text: Binding<String>,
+                                    wholeNumbers: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             OverlineText(label)
             styledField(placeholder, text: text)
-                .keyboardType(.decimalPad)
+                .keyboardType(wholeNumbers ? .numberPad : .decimalPad)
+        }
+    }
+
+    private var titlePlaceholder: String {
+        switch kind {
+        case .numeric: "Lose 20 lbs"
+        case .count: "100 workouts"
+        case .streak: "Meditate every day"
+        }
+    }
+
+    /// Sensible defaults when the kind changes on a new goal.
+    private func applyKindDefaults(_ newKind: GoalKind) {
+        switch newKind {
+        case .numeric:
+            unit = "lbs"
+            startText = ""
+        case .count:
+            unit = "times"
+            startText = "0"
+        case .streak:
+            unit = "days"
+            startText = "0"
         }
     }
 
@@ -219,8 +271,10 @@ struct GoalEditorView: View {
         EmberCard {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
-                    TextField("Value e.g. 210", text: draft.valueText)
-                        .keyboardType(.decimalPad)
+                    TextField(kind == .numeric ? "Value e.g. 210"
+                              : kind == .count ? "Count e.g. 25" : "Days e.g. 7",
+                              text: draft.valueText)
+                        .keyboardType(kind == .numeric ? .decimalPad : .numberPad)
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(Theme.textPrimary)
                         .padding(12)
@@ -281,15 +335,22 @@ struct GoalEditorView: View {
     private var isValid: Bool {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty,
               !rewardTitle.trimmingCharacters(in: .whitespaces).isEmpty,
-              let start = Double(startText.replacingOccurrences(of: ",", with: ".")),
               let target = Double(targetText.replacingOccurrences(of: ",", with: "."))
         else { return false }
-        return start != target
+        switch kind {
+        case .numeric:
+            guard let start = Double(startText.replacingOccurrences(of: ",", with: "."))
+            else { return false }
+            return start != target
+        case .count, .streak:
+            return target > 0
+        }
     }
 
     private func loadFromGoal() {
         guard let goal, !loaded else { return }
         loaded = true
+        kind = goal.kind
         title = goal.title
         unit = goal.unit
         startText = GoalFormat.number(goal.startValue)
@@ -317,24 +378,30 @@ struct GoalEditorView: View {
     }
 
     private func save() {
-        guard let start = Double(startText.replacingOccurrences(of: ",", with: ".")),
-              let target = Double(targetText.replacingOccurrences(of: ",", with: "."))
+        guard let target = Double(targetText.replacingOccurrences(of: ",", with: "."))
         else { return }
+        // Habit goals always count up from zero; streaks are measured in days.
+        let start = kind == .numeric
+            ? Double(startText.replacingOccurrences(of: ",", with: ".")) ?? 0
+            : 0
+        let savedUnit = kind == .streak ? "days" : unit
 
         let saved: Goal
         if let goal {
             saved = goal
             goal.title = title
-            goal.unit = unit
+            goal.unit = savedUnit
             goal.startValue = start
             goal.targetValue = target
             goal.accentName = accentName
             goal.rewardTitle = rewardTitle
             goal.targetDate = hasDeadline ? targetDate : nil
+            // Kind is locked after creation — entries would be reinterpreted.
         } else {
-            saved = Goal(title: title, unit: unit, startValue: start, targetValue: target,
+            saved = Goal(title: title, unit: savedUnit, startValue: start, targetValue: target,
                          accentName: accentName, rewardTitle: rewardTitle,
-                         targetDate: hasDeadline ? targetDate : nil)
+                         targetDate: hasDeadline ? targetDate : nil,
+                         goalTypeName: kind.rawValue)
             context.insert(saved)
         }
 

@@ -88,4 +88,14 @@ enum GoalFormat {
             return GoalFormat.value(value, unit: unit)
         }
     }
+
+    /// "🔥 12 days" (or "🔥 1 day"). Shared by app + widget headlines.
+    static func streakHeadline(_ days: Int) -> String {
+        "🔥 \(days) \(days == 1 ? "day" : "days")"
+    }
+
+    /// "42 / 100" style count headline.
+    static func countHeadline(current: Double, target: Double) -> String {
+        "\(number(current)) / \(number(target))"
+    }
 }

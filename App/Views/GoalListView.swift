@@ -163,9 +163,7 @@ struct GoalCardView: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text(GoalFormat.signedDelta(
-                            GoalMath.deltaFromStart(start: goal.startValue, current: goal.currentValue),
-                            unit: goal.unit))
+                        Text(statsLine)
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .monospacedDigit()
                             .foregroundStyle(accent.gradient)
@@ -178,6 +176,21 @@ struct GoalCardView: View {
                 }
                 .padding(18)
             }
+        }
+    }
+
+    private var statsLine: String {
+        switch goal.kind {
+        case .numeric:
+            return GoalFormat.signedDelta(
+                GoalMath.deltaFromStart(start: goal.startValue, current: goal.currentValue),
+                unit: goal.unit)
+        case .count:
+            let headline = GoalFormat.countHeadline(
+                current: goal.currentValue, target: goal.targetValue)
+            return goal.unit.isEmpty ? headline : "\(headline) \(goal.unit)"
+        case .streak:
+            return GoalFormat.streakHeadline(goal.currentStreak)
         }
     }
 

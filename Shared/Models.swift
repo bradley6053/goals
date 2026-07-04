@@ -1,6 +1,17 @@
 import Foundation
 import SwiftData
 
+/// How progress is measured. Stored on Goal as a raw string
+/// (`goalTypeName`) so the SwiftData schema change stays additive.
+enum GoalKind: String {
+    /// Absolute readings toward a start → target value (lose 20 lbs).
+    case numeric
+    /// Check-ins that add up (do X 100 times).
+    case count
+    /// Consecutive calendar days (do X 30 days in a row).
+    case streak
+}
+
 @Model
 final class Goal {
     var uuid: UUID = UUID()
@@ -15,6 +26,7 @@ final class Goal {
     var targetDate: Date?
     var completedAt: Date?
     var celebratedCompletion: Bool = false
+    var goalTypeName: String = "numeric"
 
     @Relationship(deleteRule: .cascade, inverse: \Milestone.goal)
     var milestones: [Milestone] = []
@@ -24,7 +36,7 @@ final class Goal {
 
     init(title: String, unit: String, startValue: Double, targetValue: Double,
          accentName: String, rewardTitle: String, rewardImageFile: String? = nil,
-         targetDate: Date? = nil) {
+         targetDate: Date? = nil, goalTypeName: String = "numeric") {
         self.uuid = UUID()
         self.title = title
         self.unit = unit
@@ -35,6 +47,7 @@ final class Goal {
         self.rewardImageFile = rewardImageFile
         self.createdAt = Date()
         self.targetDate = targetDate
+        self.goalTypeName = goalTypeName
     }
 }
 
@@ -75,8 +88,38 @@ final class ProgressEntry {
 // MARK: - Derived state
 
 extension Goal {
+    var kind: GoalKind {
+        GoalKind(rawValue: goalTypeName) ?? .numeric
+    }
+
     var currentValue: Double {
-        entries.max(by: { $0.date < $1.date })?.value ?? startValue
+        switch kind {
+        case .numeric:
+            return entries.max(by: { $0.date < $1.date })?.value ?? startValue
+        case .count:
+            return startValue + entries.reduce(0) { $0 + $1.value }
+        case .streak:
+            return Double(currentStreak)
+        }
+    }
+
+    var currentStreak: Int {
+        StreakMath.currentStreak(dates: entries.map(\.date))
+    }
+
+    var bestStreak: Int {
+        StreakMath.bestStreak(dates: entries.map(\.date))
+    }
+
+    var hasCheckedInToday: Bool {
+        StreakMath.didLog(on: Date(), dates: entries.map(\.date))
+    }
+
+    /// Monotonic value used for milestone/completion checks. A streak goal's
+    /// current streak can reset to 0, but claimed rewards must never re-lock,
+    /// so achievements key off the best streak ever reached.
+    private var achievementValue: Double {
+        kind == .streak ? Double(bestStreak) : currentValue
     }
 
     var lastLoggedAt: Date? {
@@ -84,11 +127,15 @@ extension Goal {
     }
 
     var fraction: Double {
-        GoalMath.fraction(start: startValue, target: targetValue, current: currentValue)
+        if kind == .streak {
+            guard targetValue > 0 else { return 1 }
+            return isComplete ? 1 : min(1, Double(currentStreak) / targetValue)
+        }
+        return GoalMath.fraction(start: startValue, target: targetValue, current: currentValue)
     }
 
     var isComplete: Bool {
-        GoalMath.reached(value: targetValue, start: startValue, target: targetValue, current: currentValue)
+        GoalMath.reached(value: targetValue, start: startValue, target: targetValue, current: achievementValue)
     }
 
     /// Milestones ordered by progress position (closest-to-start first).
@@ -101,11 +148,11 @@ extension Goal {
 
     var nextMilestone: Milestone? {
         orderedMilestones.first {
-            !GoalMath.reached(value: $0.value, start: startValue, target: targetValue, current: currentValue)
+            !GoalMath.reached(value: $0.value, start: startValue, target: targetValue, current: achievementValue)
         }
     }
 
     func isReached(_ milestone: Milestone) -> Bool {
-        GoalMath.reached(value: milestone.value, start: startValue, target: targetValue, current: currentValue)
+        GoalMath.reached(value: milestone.value, start: startValue, target: targetValue, current: achievementValue)
     }
 }

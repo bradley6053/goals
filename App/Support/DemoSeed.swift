@@ -42,8 +42,57 @@ enum DemoSeed {
         context.insert(entry)
         s1.unlockedAt = Date()
 
+        seedHabitGoals(context: context)
+
         try? context.save()
         let all = (try? context.fetch(FetchDescriptor<Goal>())) ?? []
         WidgetSnapshotStore.write(from: all)
+    }
+
+    /// One count goal and one streak goal so every kind shows in previews.
+    private static func seedHabitGoals(context: ModelContext) {
+        let calendar = Calendar.current
+
+        func day(ago offset: Int, hour: Int = 9) -> Date {
+            let base = calendar.date(byAdding: .day, value: -offset,
+                                     to: calendar.startOfDay(for: Date())) ?? Date()
+            return calendar.date(byAdding: .hour, value: hour, to: base) ?? base
+        }
+
+        // Count: 8 of 20 workouts logged, first milestone already unlocked.
+        let workouts = Goal(title: "20 workouts", unit: "times",
+                            startValue: 0, targetValue: 20,
+                            accentName: "violet", rewardTitle: "New putter",
+                            goalTypeName: GoalKind.count.rawValue)
+        context.insert(workouts)
+        let w1 = Milestone(value: 5, rewardTitle: "Massage")
+        w1.goal = workouts
+        w1.unlockedAt = Date()
+        context.insert(w1)
+        let w2 = Milestone(value: 12, rewardTitle: "Lifting shoes")
+        w2.goal = workouts
+        context.insert(w2)
+        for offset in [18, 16, 13, 11, 8, 6, 3, 1] {
+            let entry = ProgressEntry(date: day(ago: offset), value: 1)
+            entry.goal = workouts
+            context.insert(entry)
+        }
+
+        // Streak: best run of 8 ended 12 days ago; current 5-day run is
+        // alive through yesterday so "Check in today" is enabled.
+        let meditate = Goal(title: "Meditate daily", unit: "days",
+                            startValue: 0, targetValue: 30,
+                            accentName: "jade", rewardTitle: "Weekend retreat",
+                            goalTypeName: GoalKind.streak.rawValue)
+        context.insert(meditate)
+        let m = Milestone(value: 7, rewardTitle: "Fancy coffee")
+        m.goal = meditate
+        m.unlockedAt = Date()
+        context.insert(m)
+        for offset in Array(12...19) + Array(1...5) {
+            let entry = ProgressEntry(date: day(ago: offset), value: 1)
+            entry.goal = meditate
+            context.insert(entry)
+        }
     }
 }
