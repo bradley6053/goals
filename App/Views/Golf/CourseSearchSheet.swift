@@ -17,6 +17,8 @@ struct CourseSearchSheet: View {
     @State private var searchState: SearchState = .idle
     @State private var path = NavigationPath()
     @State private var loadingCourseID: String?
+    @State private var searchTask: Task<Void, Never>?
+    @State private var editingCourse: GolfCourse?
 
     private enum SearchState: Equatable {
         case idle, loading, loaded, empty
@@ -37,9 +39,7 @@ struct CourseSearchSheet: View {
 
                     switch searchState {
                     case .loading:
-                        ProgressView()
-                            .tint(GolfTheme.fairway)
-                            .padding(.top, 24)
+                        EmptyView() // spinner lives in the search field
                     case .failed(let message):
                         statusText(message, color: GolfTheme.flag)
                     case .empty:
@@ -78,6 +78,9 @@ struct CourseSearchSheet: View {
                     path.append(course)
                 }
             }
+            .sheet(item: $editingCourse) { course in
+                CourseEditSheet(course: course)
+            }
         }
         .preferredColorScheme(.light)
     }
@@ -91,9 +94,18 @@ struct CourseSearchSheet: View {
                 .foregroundStyle(GolfTheme.ink)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
-                .onSubmit { Task { await search() } }
-            if !query.isEmpty {
+                .onSubmit {
+                    searchTask?.cancel()
+                    Task { await search() }
+                }
+                .onChange(of: query) { _, newValue in
+                    scheduleSearch(for: newValue)
+                }
+            if searchState == .loading {
+                ProgressView().tint(GolfTheme.fairway)
+            } else if !query.isEmpty {
                 Button {
+                    searchTask?.cancel()
                     query = ""
                     results = []
                     searchState = .idle
@@ -144,7 +156,19 @@ struct CourseSearchSheet: View {
                               loading: false)
                 }
                 .buttonStyle(.plain)
+                .contextMenu {
+                    Button {
+                        editingCourse = course
+                    } label: {
+                        Label("Fix course info", systemImage: "pencil")
+                    }
+                }
             }
+            Text("Wrong city or state? Press and hold a course to fix it.")
+                .font(GolfTheme.label(10))
+                .foregroundStyle(GolfTheme.inkFaint)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 2)
         }
     }
 
@@ -199,16 +223,36 @@ struct CourseSearchSheet: View {
 
     // MARK: - Actions
 
+    /// Type-ahead: wait for a pause in typing, then search. Each keystroke
+    /// cancels the previous in-flight request.
+    private func scheduleSearch(for text: String) {
+        searchTask?.cancel()
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count >= 3 else {
+            results = []
+            searchState = .idle
+            return
+        }
+        searchTask = Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            await search()
+        }
+    }
+
     private func search() async {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         searchState = .loading
-        results = []
         do {
             let found = try await client.searchCourses(query: trimmed)
+            guard !Task.isCancelled else { return }
             results = found
             searchState = found.isEmpty ? .empty : .loaded
+        } catch is CancellationError {
+            // A newer keystroke took over — keep whatever is on screen.
         } catch {
+            guard !Task.isCancelled else { return }
             searchState = .failed(error.localizedDescription)
         }
     }

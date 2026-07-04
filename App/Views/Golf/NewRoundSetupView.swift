@@ -10,6 +10,7 @@ struct NewRoundSetupView: View {
     @Environment(\.modelContext) private var context
     @State private var selectedTee: GolfTee?
     @State private var holeCount = 18
+    @State private var editingCourse = false
 
     private var canPlayEighteen: Bool { course.holeCount >= 18 }
 
@@ -34,6 +35,19 @@ struct NewRoundSetupView: View {
         .background(GolfTheme.bg.ignoresSafeArea())
         .navigationTitle("New round")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    editingCourse = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .foregroundStyle(GolfTheme.sky)
+                }
+            }
+        }
+        .sheet(isPresented: $editingCourse) {
+            CourseEditSheet(course: course)
+        }
         .onAppear {
             holeCount = min(course.holeCount, 18) == 9 ? 9 : 18
             if selectedTee == nil {
@@ -51,6 +65,14 @@ struct NewRoundSetupView: View {
                     .font(GolfTheme.serif(24))
                     .foregroundStyle(GolfTheme.ink)
                     .multilineTextAlignment(.center)
+                let location = [course.city, course.state]
+                    .filter { !$0.isEmpty }.joined(separator: ", ")
+                if !location.isEmpty {
+                    Text(location)
+                        .font(GolfTheme.label(10))
+                        .tracking(0.8)
+                        .foregroundStyle(GolfTheme.inkFaint)
+                }
                 Text("\(course.holeCount) holes · Par \(course.par)"
                      + (course.totalYardage.map { " · \($0) yds" } ?? ""))
                     .font(GolfTheme.label(11))

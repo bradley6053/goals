@@ -62,5 +62,6 @@ _(No specific in-flight task was recorded when the prior session terminated — 
 - [ ] Broader test coverage beyond `GoalMath`.
 
 ## Changelog
+- **2026-07-04 (later)** — Course search now suggests as you type (350 ms debounce, cancels superseded requests). Added `CourseEditSheet` to fix a cached course's name/city/state (re-geocodes the passport pin) — reachable via press-and-hold on "Your courses" and the pencil on round setup. Round setup now shows the course's city/state. Root cause: OpenGolfAPI has bad location data on some records (e.g. Evansville Country Club, IN listed as "Winterrowd, IL" with wrong coordinates but a correct scorecard/street address).
 - **2026-07-04** — Added the golf scorecard tab: TabView root, Sweetens Cove `GolfTheme`, OpenGolfAPI course search + import, hole-by-hole entry with stats (putts/FIR/GIR/penalties), round summary + share card, records, passport with map, celebrations/confetti. 5 new SwiftData models (additive schema change). EmberTests now depends on the Ember target (fixed clean-build test failures). 32 tests green; verified in simulator with screenshots.
 - **2026-07-02** — Initialized git repo + this PROGRESS.md. Reconstructed state after a prior session terminated without a save. Confirmed build + tests green.

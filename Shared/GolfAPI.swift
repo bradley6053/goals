@@ -31,6 +31,11 @@ struct GolfAPIClient {
         do {
             (data, response) = try await session.data(from: url)
         } catch {
+            // Superseded type-ahead requests get cancelled — let callers
+            // tell that apart from a real connectivity failure.
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                throw CancellationError()
+            }
             throw GolfAPIError.offline
         }
         if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
