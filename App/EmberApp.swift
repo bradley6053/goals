@@ -5,6 +5,7 @@ import SwiftData
 struct EmberApp: App {
     private let container: ModelContainer
     @State private var timerStore = TimerStore()
+    @State private var reflectionStore = ReflectionStore()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -28,6 +29,7 @@ struct EmberApp: App {
             RootTabView()
                 .preferredColorScheme(.dark)
                 .environment(timerStore)
+                .environment(reflectionStore)
         }
         .modelContainer(container)
         .onChange(of: scenePhase) { _, phase in

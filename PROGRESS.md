@@ -1,9 +1,9 @@
 # Ember — Progress
 
-A native SwiftUI iOS goals-tracking app with a home-screen widget, a Sweetens Cove–themed golf scorecard tab, and a "Dad Clock" timers tab with Live Activities. Personal project.
+A native SwiftUI iOS goals-tracking app with a home-screen widget, a Sweetens Cove–themed golf scorecard tab, a "Dad Clock" timers tab with Live Activities, and a candlelit Daily Reflection tab. Personal project.
 
-## Snapshot (2026-07-04)
-- **Status:** ✅ Build succeeds (app + widget), ✅ all 69 unit tests pass (GoalMath 11, StreakMath 13, GoalKind 5, GolfMath 16, GolfAPI 3, TimerMath 21).
+## Snapshot (2026-07-11)
+- **Status:** ✅ Build succeeds (app + widget), ✅ all 80 unit tests pass (GoalMath 11, StreakMath 13, GoalKind 5, GolfMath 16, GolfAPI 3, TimerMath 21, ReflectionMath 11).
 - **Platform:** iOS 18+, SwiftUI, dark mode forced app-wide (golf tab paints its own cream light world), portrait only.
 - **Bundle IDs:** app `com.bradniemeier.ember`, widget `com.bradniemeier.ember.widget`, tests `com.bradniemeier.ember.tests`.
 - **App group (shared storage):** `group.com.bradniemeier.ember`.
@@ -23,9 +23,10 @@ xcodegen generate
 | Goal views | `App/Views/` — `GoalListView`, `GoalDetailView`, `GoalEditorView`, `LogProgressSheet`, `CelebrationView`, `Components` |
 | Golf views | `App/Views/Golf/` — `GolfHomeView`, `CourseSearchSheet`, `ManualCourseEntryView`, `NewRoundSetupView`, `RoundEntryView`, `RoundSummaryView`, `ScorecardShareCard`, `StatsView`, `RecordsView`, `PassportView`, `GolfCelebrationView`, `ConfettiView`, `GolfComponents` |
 | Timer views | `App/Views/Timers/` — `TimersHomeView`, `WindingDialView`, `PresetConfigSheet`; `App/Support/` — `TimerStore`, `TimerNotifications`, `TimerActivityController` |
-| Shared (all targets) | `Shared/` — `Models`, `GoalMath`, `Theme`, `AppGroup`, `ImageStore`, `WidgetSnapshot`, `GolfModels`, `GolfMath`, `GolfTheme`, `GolfAPI`, `TimerMath`, `TimerModels`, `TimerActivityAttributes` |
+| Reflection | `App/Views/Reflection/ReflectionHomeView`; `App/Support/ReflectionStore`; `Shared/` — `ReflectionModels`, `ReflectionQuotes`, `ReflectionMath`, `ReflectionTheme` |
+| Shared (all targets) | `Shared/` — `Models`, `GoalMath`, `Theme`, `AppGroup`, `ImageStore`, `WidgetSnapshot`, `GolfModels`, `GolfMath`, `GolfTheme`, `GolfAPI`, `TimerMath`, `TimerModels`, `TimerActivityAttributes`, `ReflectionModels`, `ReflectionQuotes`, `ReflectionMath`, `ReflectionTheme` |
 | Widget | `Widget/EmberWidget.swift`, `Widget/TimerLiveActivity.swift` |
-| Tests | `Tests/` — `GoalMathTests` (11), `StreakMathTests` (13), `GoalKindTests` (5), `GolfMathTests` (16), `GolfAPITests` (3), `TimerMathTests` (21) |
+| Tests | `Tests/` — `GoalMathTests` (11), `StreakMathTests` (13), `GoalKindTests` (5), `GolfMathTests` (16), `GolfAPITests` (3), `TimerMathTests` (21), `ReflectionMathTests` (11) |
 
 ## Build & test
 ```
@@ -62,6 +63,12 @@ xcodebuild -project Ember.xcodeproj -scheme Ember -sdk iphonesimulator \
   - **At zero:** local notification with per-preset playful copy, scheduled at start, cancelled/rescheduled on pause/resume (`TimerNotifications`); permission requested contextually on first timer start; `Haptics.unlock()` if it fires while foregrounded.
   - **Live Activity:** `TimerActivityAttributes` (Shared) + `TimerLiveActivity` (Widget bundle) — Lock Screen banner and Dynamic Island (compact/minimal/expanded) driven by `Text(timerInterval:)`/`ProgressView(timerInterval:)`, so the system advances the countdown with zero updates/pushes. `staleDate = endDate` dims it after firing; cancelled timers end `.immediate`, fired ones linger ~4 min at 0:00. Skipped for timers > 8 h (system cap). `NSSupportsLiveActivities` lives in `project.yml` under the **main app's** info properties. Orphan cleanup on launch.
   - Deep link `ember://timers`, `-timersTab` and `-demoTimer` (2-min sample countdown) launch args.
+- **Daily Reflection tab ("Reflect")** — one quote a day to sit with, in its own candlelit umber world (deep umber bg, candle-gold accent, serif quote type — distinct from both the dark Ember and cream golf worlds; `ReflectionTheme`):
+  - **210-quote library** (`Shared/ReflectionQuotes.all`) balanced 35 each across six labeled themes — Scripture, Saints & Writers, Fatherhood, Marriage, Leadership, Virtue — chosen to fit Brad (dad, founder/co-CEO, husband, Catholic). Authored **interleaved round-robin** so plain modulo day-selection rotates themes day to day. Public-domain-first sourcing; modern figures only as short attributed lines; unverifiable "saint quotes" marked "Attributed to…". A unit test enforces count/balance/uniqueness/interleave, so edit the array in whole rounds of six.
+  - **Deterministic quote of the day** (`Shared/ReflectionMath`, pure, 11 tests): civil-days-since-2025-01-01 (via `Calendar`, never 86 400) modulo library count, negative-safe. Same civil date → same quote in any time zone; walks the whole library (~7 months) before repeating. Re-derived from `Date()` on every render, so midnight rolls the page with no timer/observer.
+  - **One-tap check-in** with streak + last-7-days dots, reusing `StreakMath` (`didLog`/`currentStreak`/`recentDays`). "I reflected today" → outlined "Reflected today ✓" (tappable to undo). **No SwiftData** — check-ins are Codable JSON at `AppGroup.reflectionURL` (`reflection.json`), same discipline as `TimerStore`; the goals/golf schema is untouched.
+  - Deep link `ember://reflect` and `-reflectTab` launch arg jump to the tab.
+  - Library/selection logic lives in `Shared/` so a future reflection widget is a small follow-up (deliberately out of v1 scope).
 
 ## Open threads / possible next steps
 _(No specific in-flight task was recorded when the prior session terminated — the codebase was left in a green state.)_
@@ -74,6 +81,7 @@ _(No specific in-flight task was recorded when the prior session terminated — 
 - [ ] Broader test coverage beyond `GoalMath`.
 
 ## Changelog
+- **2026-07-11** — Added the Daily Reflection tab ("Reflect"): a candlelit fourth world (`ReflectionTheme` — umber/candle-gold, serif) showing a deterministic quote of the day from a 210-quote library (`ReflectionQuotes`, 35 × 6 labeled themes, interleaved; PD-first sourcing) selected by `ReflectionMath` (pure, timezone-stable, 11 tests). One-tap check-in with streak + 7-day dots via the existing `StreakMath`, persisted as JSON at `AppGroup.reflectionURL` (**no SwiftData change** — schema untouched, zero migration risk). New launch arg `-reflectTab`; deep link `ember://reflect`. 80 tests green; verified in simulator with screenshots (quote card + warm chrome, checked-in state with 1-day streak/filled dot, cold-launch `ember://reflect` routing + persisted check-in across relaunch).
 - **2026-07-04 (night)** — Added the Timers tab ("Dad Clock"): winding-dial timer UX (`TimerMath` pure enum, 21 tests), JSON-persisted `TimerStore` (no SwiftData — schema untouched), preset chips incl. clock-anchored Bedtime and a kid turn timer, local notifications at zero with playful copy, and Live Activities (Lock Screen + Dynamic Island, zero-push `timerInterval` views). New launch args `-timersTab`, `-demoTimer`; deep link `ember://timers`. 69 tests green; verified in simulator with screenshots (running dial, Lock Screen Live Activity, foreground sweep).
 - **2026-07-04 (evening)** — Added count + streak goal kinds: additive `goalTypeName` on Goal (lightweight migration verified by installing the new build over old-build data), `StreakMath` (13 tests) + `GoalKindTests` (5), `ProgressLogger` extraction, kind picker in editor (create only), one-tap check-in UX, kind-aware list/detail/widget rendering, streak midnight widget entry, demo seeds ("20 workouts", "Meditate daily"). 48 tests green; list/detail/check-in/editor/migration verified in simulator with screenshots.
 - **2026-07-04 (later)** — Course search now suggests as you type (350 ms debounce, cancels superseded requests). Added `CourseEditSheet` to fix a cached course's name/city/state (re-geocodes the passport pin) — reachable via press-and-hold on "Your courses" and the pencil on round setup. Round setup now shows the course's city/state. Root cause: OpenGolfAPI has bad location data on some records (e.g. Evansville Country Club, IN listed as "Winterrowd, IL" with wrong coordinates but a correct scorecard/street address).

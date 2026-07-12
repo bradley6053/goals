@@ -24,6 +24,10 @@ enum AppGroup {
     static var timersURL: URL {
         containerURL.appendingPathComponent("active-timers.json")
     }
+
+    static var reflectionURL: URL {
+        containerURL.appendingPathComponent("reflection.json")
+    }
 }
 
 enum EmberStore {
