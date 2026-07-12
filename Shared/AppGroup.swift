@@ -20,6 +20,10 @@ enum AppGroup {
     static var snapshotURL: URL {
         containerURL.appendingPathComponent("widget-snapshot.json")
     }
+
+    static var timersURL: URL {
+        containerURL.appendingPathComponent("active-timers.json")
+    }
 }
 
 enum EmberStore {

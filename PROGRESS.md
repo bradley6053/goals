@@ -1,9 +1,9 @@
 # Ember — Progress
 
-A native SwiftUI iOS goals-tracking app with a home-screen widget, plus a Sweetens Cove–themed golf scorecard tab. Personal project.
+A native SwiftUI iOS goals-tracking app with a home-screen widget, a Sweetens Cove–themed golf scorecard tab, and a "Dad Clock" timers tab with Live Activities. Personal project.
 
 ## Snapshot (2026-07-04)
-- **Status:** ✅ Build succeeds (app + widget), ✅ all 48 unit tests pass (GoalMath 11, StreakMath 13, GoalKind 5, GolfMath 16, GolfAPI 3).
+- **Status:** ✅ Build succeeds (app + widget), ✅ all 69 unit tests pass (GoalMath 11, StreakMath 13, GoalKind 5, GolfMath 16, GolfAPI 3, TimerMath 21).
 - **Platform:** iOS 18+, SwiftUI, dark mode forced app-wide (golf tab paints its own cream light world), portrait only.
 - **Bundle IDs:** app `com.bradniemeier.ember`, widget `com.bradniemeier.ember.widget`, tests `com.bradniemeier.ember.tests`.
 - **App group (shared storage):** `group.com.bradniemeier.ember`.
@@ -22,9 +22,10 @@ xcodegen generate
 | App shell | `App/EmberApp.swift`, `App/Views/RootTabView.swift`, `App/Support/` — `DemoSeed`, `GolfDemoSeed`, `Haptics` |
 | Goal views | `App/Views/` — `GoalListView`, `GoalDetailView`, `GoalEditorView`, `LogProgressSheet`, `CelebrationView`, `Components` |
 | Golf views | `App/Views/Golf/` — `GolfHomeView`, `CourseSearchSheet`, `ManualCourseEntryView`, `NewRoundSetupView`, `RoundEntryView`, `RoundSummaryView`, `ScorecardShareCard`, `StatsView`, `RecordsView`, `PassportView`, `GolfCelebrationView`, `ConfettiView`, `GolfComponents` |
-| Shared (all targets) | `Shared/` — `Models`, `GoalMath`, `Theme`, `AppGroup`, `ImageStore`, `WidgetSnapshot`, `GolfModels`, `GolfMath`, `GolfTheme`, `GolfAPI` |
-| Widget | `Widget/EmberWidget.swift` |
-| Tests | `Tests/` — `GoalMathTests` (11), `GolfMathTests` (16), `GolfAPITests` (3) |
+| Timer views | `App/Views/Timers/` — `TimersHomeView`, `WindingDialView`, `PresetConfigSheet`; `App/Support/` — `TimerStore`, `TimerNotifications`, `TimerActivityController` |
+| Shared (all targets) | `Shared/` — `Models`, `GoalMath`, `Theme`, `AppGroup`, `ImageStore`, `WidgetSnapshot`, `GolfModels`, `GolfMath`, `GolfTheme`, `GolfAPI`, `TimerMath`, `TimerModels`, `TimerActivityAttributes` |
+| Widget | `Widget/EmberWidget.swift`, `Widget/TimerLiveActivity.swift` |
+| Tests | `Tests/` — `GoalMathTests` (11), `StreakMathTests` (13), `GoalKindTests` (5), `GolfMathTests` (16), `GolfAPITests` (3), `TimerMathTests` (21) |
 
 ## Build & test
 ```
@@ -54,16 +55,26 @@ xcodebuild -project Ember.xcodeproj -scheme Ember -sdk iphonesimulator \
   - **Fun feature 3 — Live Round Vibes:** confetti + haptics on birdie/eagle commit, hot/cold streak banners.
   - Deep link `ember://golf` and `-golfTab` launch arg jump to the golf tab; `GOLF_OPEN` env var (simulator) jumps to a specific screen for screenshots.
 - Golf data: 5 new SwiftData models (`GolfCourse/GolfTee/GolfHole/GolfRound/GolfHoleScore`) added additively to the existing app-group store — goals data verified intact alongside.
+- **Timers tab ("Dad Clock")** — dad-life countdowns with a wind-up dial and Live Activities:
+  - **Winding dial:** drag around the circle to wind time on like a kitchen timer — 1 revolution = 60 min, 1-min haptic detents, multiple laps stack hours (4 h cap), counter-clockwise unwinds, springs to whole minutes on release. All angle math (incl. the 12-o'clock unwrap and center dead zone) is pure in `Shared/TimerMath.swift` — 21 tests.
+  - **No SwiftData:** timers are Codable JSON at `AppGroup.timersURL` (`active-timers.json`). Remaining time always derives from `endDate` — nothing ticks, so force-kill/relaunch loses nothing. `TimerStore.sweep` drops fired timers on launch + every foregrounding.
+  - **Presets:** Leave the House 🚗 / Bedtime 🌙 / Clean-Up 🧹 / Screen Time 📺 / Turn Timer 🔁. Chips pre-wind the dial with a spring; Bedtime counts down to a wall-clock time (set once, `Calendar.nextDate`-based) and starts on tap; the turn timer rotates kid names ("Next · ⟨name⟩" one-tap handoff). Long-press a chip → customize sheet (time / minutes / names), overrides persist in the same JSON.
+  - **At zero:** local notification with per-preset playful copy, scheduled at start, cancelled/rescheduled on pause/resume (`TimerNotifications`); permission requested contextually on first timer start; `Haptics.unlock()` if it fires while foregrounded.
+  - **Live Activity:** `TimerActivityAttributes` (Shared) + `TimerLiveActivity` (Widget bundle) — Lock Screen banner and Dynamic Island (compact/minimal/expanded) driven by `Text(timerInterval:)`/`ProgressView(timerInterval:)`, so the system advances the countdown with zero updates/pushes. `staleDate = endDate` dims it after firing; cancelled timers end `.immediate`, fired ones linger ~4 min at 0:00. Skipped for timers > 8 h (system cap). `NSSupportsLiveActivities` lives in `project.yml` under the **main app's** info properties. Orphan cleanup on launch.
+  - Deep link `ember://timers`, `-timersTab` and `-demoTimer` (2-min sample countdown) launch args.
 
 ## Open threads / possible next steps
 _(No specific in-flight task was recorded when the prior session terminated — the codebase was left in a green state.)_
 - [x] Widget timeline refresh strategy — streak snapshots now get a midnight timeline entry (`displayedStreak` re-derives the shown number so a lapsed streak reads 0 without the app opening); other kinds unchanged (app reloads timelines on every save).
-- [ ] Local notifications / reminders.
+- [ ] Local notifications / reminders for **goals** (timers have theirs; goal reminders still open).
+- [ ] Timer feel-tuning on a real device (dial drag friction, haptic detents, Dynamic Island) — simulator can't judge touch feel.
+- [ ] Optional: confetti celebration when a timer fires in-foreground (deliberately left out of v1 per Brad's scope choice).
 - [ ] iCloud or persistence review (where are goals stored today?).
 - [ ] Chart/history visualization in `GoalDetailView`.
 - [ ] Broader test coverage beyond `GoalMath`.
 
 ## Changelog
+- **2026-07-04 (night)** — Added the Timers tab ("Dad Clock"): winding-dial timer UX (`TimerMath` pure enum, 21 tests), JSON-persisted `TimerStore` (no SwiftData — schema untouched), preset chips incl. clock-anchored Bedtime and a kid turn timer, local notifications at zero with playful copy, and Live Activities (Lock Screen + Dynamic Island, zero-push `timerInterval` views). New launch args `-timersTab`, `-demoTimer`; deep link `ember://timers`. 69 tests green; verified in simulator with screenshots (running dial, Lock Screen Live Activity, foreground sweep).
 - **2026-07-04 (evening)** — Added count + streak goal kinds: additive `goalTypeName` on Goal (lightweight migration verified by installing the new build over old-build data), `StreakMath` (13 tests) + `GoalKindTests` (5), `ProgressLogger` extraction, kind picker in editor (create only), one-tap check-in UX, kind-aware list/detail/widget rendering, streak midnight widget entry, demo seeds ("20 workouts", "Meditate daily"). 48 tests green; list/detail/check-in/editor/migration verified in simulator with screenshots.
 - **2026-07-04 (later)** — Course search now suggests as you type (350 ms debounce, cancels superseded requests). Added `CourseEditSheet` to fix a cached course's name/city/state (re-geocodes the passport pin) — reachable via press-and-hold on "Your courses" and the pencil on round setup. Round setup now shows the course's city/state. Root cause: OpenGolfAPI has bad location data on some records (e.g. Evansville Country Club, IN listed as "Winterrowd, IL" with wrong coordinates but a correct scorecard/street address).
 - **2026-07-04** — Added the golf scorecard tab: TabView root, Sweetens Cove `GolfTheme`, OpenGolfAPI course search + import, hole-by-hole entry with stats (putts/FIR/GIR/penalties), round summary + share card, records, passport with map, celebrations/confetti. 5 new SwiftData models (additive schema change). EmberTests now depends on the Ember target (fixed clean-build test failures). 32 tests green; verified in simulator with screenshots.

@@ -5,6 +5,7 @@ import SwiftUI
 struct EmberWidgetBundle: WidgetBundle {
     var body: some Widget {
         EmberWidget()
+        TimerLiveActivity()
     }
 }
 
